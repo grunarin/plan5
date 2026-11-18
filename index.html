@@ -14,10 +14,13 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         /* Word Search Game Styles */
-        #ws-grid { display: grid; gap: 2px; background-color: #94a3b8; padding: 4px; border-radius: 8px; touch-action: none; width: 100%; max-width: 420px; margin: 0 auto; user-select: none; }
-        .ws-cell { aspect-ratio: 1 / 1; width: 100%; background-color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: clamp(14px, 3.5vw, 18px); text-transform: uppercase; cursor: pointer; border-radius: 4px; color: #334155; box-sizing: border-box; }
-        .ws-cell.selected { background-color: #93c5fd; color: #1e3a8a; }
-        .ws-cell.found { background-color: #4ade80; color: #14532d; }
+        #ws-board-wrapper { position: relative; width: 100%; max-width: 420px; margin: 0 auto; user-select: none; touch-action: none; }
+        #ws-grid { display: grid; gap: 3px; background-color: #cbd5e1; padding: 6px; border-radius: 12px; touch-action: none; width: 100%; user-select: none; position: relative; z-index: 10; }
+        .ws-cell { aspect-ratio: 1 / 1; width: 100%; background-color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: clamp(14px, 3.5vw, 18px); text-transform: uppercase; cursor: pointer; border-radius: 6px; color: #334155; box-sizing: border-box; transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease; position: relative; z-index: 10; }
+        .ws-cell.selected { background-color: #3b82f6 !important; color: #ffffff !important; transform: scale(1.06); box-shadow: 0 0 0 2px #1d4ed8; z-index: 20; }
+        .ws-cell.found { font-weight: 800; animation: popFound 0.3s ease; }
+        @keyframes popFound { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+        #ws-lines-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; overflow: visible; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -112,19 +115,26 @@
 
             <!-- Game Area (Hidden initially) -->
             <div id="game-container" class="relative overflow-hidden p-2 hidden">
-                <!-- Player & Timer Info -->
-                <div class="flex justify-between items-center mb-3 px-2 max-w-lg mx-auto w-full">
-                    <span id="ws-player-display" class="font-bold text-blue-800 text-sm sm:text-base"></span>
-                    <span id="ws-timer-display" class="font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full text-sm sm:text-base"><i class="fa-solid fa-clock"></i> 60s</span>
+                <!-- Player, Score & Timer Info -->
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl max-w-lg mx-auto w-full shadow-sm">
+                    <span id="ws-player-display" class="font-bold text-blue-900 text-sm sm:text-base flex items-center gap-1"><i class="fa-solid fa-user-astronaut text-blue-600"></i> -</span>
+                    <span id="ws-score-display" class="font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full text-sm sm:text-base shadow-sm transition-transform duration-200"><i class="fa-solid fa-star text-amber-500"></i> คะแนน: 0 / 10 (0 แต้ม)</span>
+                    <span id="ws-timer-display" class="font-bold text-red-600 bg-red-100 border border-red-200 px-3 py-1 rounded-full text-sm sm:text-base"><i class="fa-solid fa-clock"></i> 60s</span>
                 </div>
 
+                <!-- Live Toast Feedback -->
+                <div id="ws-toast" class="h-7 text-center font-bold text-sm sm:text-base mb-1 transition-all duration-300 opacity-0"></div>
+
                 <div class="flex flex-col items-center">
-                    <!-- Grid -->
-                    <div id="ws-grid" class="mb-6 shadow-sm border border-gray-300"></div>
+                    <!-- Grid + SVG Highlight Bars Wrapper -->
+                    <div id="ws-board-wrapper" class="mb-6">
+                        <div id="ws-grid" class="shadow-md border border-slate-300"></div>
+                        <svg id="ws-lines-svg"></svg>
+                    </div>
                     
                     <!-- Word List -->
-                    <div class="bg-gray-50 p-4 rounded w-full border border-gray-200 shadow-inner max-w-lg">
-                        <h4 class="font-bold text-gray-700 mb-3 text-center"><i class="fa-solid fa-list-ul"></i> คำศัพท์ที่ต้องหา (<span id="words-found-count">0</span>/10)</h4>
+                    <div class="bg-gray-50 p-4 rounded-xl w-full border border-gray-200 shadow-inner max-w-lg">
+                        <h4 class="font-bold text-gray-700 mb-3 text-center"><i class="fa-solid fa-list-ul"></i> คำศัพท์ที่ต้องหา (<span id="words-found-count" class="text-blue-600">0</span>/10)</h4>
                         <div id="ws-word-list" class="flex flex-wrap justify-center gap-2">
                             <!-- Injected via JS -->
                         </div>
@@ -135,9 +145,13 @@
                 <div id="game-over-screen" class="absolute inset-0 bg-white bg-opacity-95 flex flex-col justify-center items-center rounded-lg z-30 hidden p-4 text-center border-4 border-blue-400">
                     <div id="go-icon" class="text-6xl mb-4"></div>
                     <h3 id="go-title" class="text-3xl font-bold mb-2"></h3>
-                    <p class="text-gray-700 text-lg mb-2">ชื่อผู้เล่น: <span id="go-name" class="font-bold text-blue-700"></span></p>
-                    <p class="text-gray-700 text-lg mb-6">หาคำศัพท์ได้: <span id="go-score" class="font-bold text-green-600 text-3xl">0</span> / 10</p>
-                    <button onclick="showWsStartScreen()" class="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-500 shadow-md">เริ่มเล่นใหม่</button>
+                    <p class="text-gray-700 text-lg mb-1">ชื่อผู้เล่น: <span id="go-name" class="font-bold text-blue-700"></span></p>
+                    <p class="text-gray-700 text-lg mb-1">หาคำศัพท์ได้: <span id="go-score" class="font-bold text-green-600 text-3xl">0</span> / 10 คำ</p>
+                    <p class="text-gray-700 text-lg mb-6">คะแนนรวม: <span id="go-points" class="font-bold text-amber-600 text-2xl">0</span> แต้ม</p>
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button onclick="document.getElementById('game-over-screen').classList.add('hidden')" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-full font-bold hover:bg-gray-300 shadow">ดูตารางคำศัพท์</button>
+                        <button onclick="showWsStartScreen()" class="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-500 shadow-md">เริ่มเล่นใหม่</button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -249,13 +263,18 @@
             return array;
         }
 
-        const synth = window.speechSynthesis;
+        const synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
         function speakText(text) {
-            if (synth.speaking) synth.cancel();
-            const utterThis = new SpeechSynthesisUtterance(text);
-            utterThis.lang = 'en-US';
-            utterThis.rate = 0.9;
-            synth.speak(utterThis);
+            try {
+                if (!synth) return;
+                if (synth.speaking) synth.cancel();
+                const utterThis = new SpeechSynthesisUtterance(text);
+                utterThis.lang = 'en-US';
+                utterThis.rate = 0.9;
+                synth.speak(utterThis);
+            } catch (err) {
+                console.warn('SpeechSynthesis error:', err);
+            }
         }
 
         function showCustomAlert(msg) {
@@ -308,54 +327,106 @@
         }
 
         function initAudio() {
-            if(!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
+            try {
+                if(!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) audioCtx = new AudioContext();
+                }
+                if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (err) {
+                console.warn('AudioContext error:', err);
             }
-            if(audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function playSfx(type) {
-            if (!soundEnabled || !audioCtx) return;
-            const t = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            try {
+                if (!soundEnabled || !audioCtx) return;
+                const t = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
 
-            if (type === 'good') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(600, t);
-                osc.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
-                gain.gain.setValueAtTime(0.1, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-                osc.start(t);
-                osc.stop(t + 0.2);
-            } else if (type === 'bonus') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(523.25, t);
-                osc.frequency.setValueAtTime(659.25, t + 0.1);
-                osc.frequency.setValueAtTime(783.99, t + 0.2);
-                gain.gain.setValueAtTime(0.1, t);
-                gain.gain.linearRampToValueAtTime(0.01, t + 0.4);
-                osc.start(t);
-                osc.stop(t + 0.4);
+                if (type === 'good') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, t);
+                    osc.frequency.exponentialRampToValueAtTime(1174.66, t + 0.14);
+                    gain.gain.setValueAtTime(0.12, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.24);
+                    osc.start(t);
+                    osc.stop(t + 0.24);
+                } else if (type === 'bonus') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, t);
+                    osc.frequency.setValueAtTime(659.25, t + 0.1);
+                    osc.frequency.setValueAtTime(783.99, t + 0.2);
+                    osc.frequency.setValueAtTime(1046.50, t + 0.3);
+                    gain.gain.setValueAtTime(0.15, t);
+                    gain.gain.linearRampToValueAtTime(0.01, t + 0.5);
+                    osc.start(t);
+                    osc.stop(t + 0.5);
+                }
+            } catch (err) {
+                console.warn('SFX error:', err);
             }
         }
+
+        // 10 Distinct Vibrant Colors for Found Words
+        const wordColorPalette = [
+            { name: 'emerald', cellBg: '#6ee7b7', border: '#059669', text: '#064e3b', barStroke: 'rgba(16, 185, 129, 0.38)' },
+            { name: 'rose',    cellBg: '#fda4af', border: '#e11d48', text: '#881337', barStroke: 'rgba(244, 63, 94, 0.38)' },
+            { name: 'amber',   cellBg: '#fde047', border: '#d97706', text: '#78350f', barStroke: 'rgba(245, 158, 11, 0.38)' },
+            { name: 'violet',  cellBg: '#c4b5fd', border: '#7c3aed', text: '#4c1d95', barStroke: 'rgba(139, 92, 246, 0.38)' },
+            { name: 'cyan',    cellBg: '#67e8f9', border: '#0891b2', text: '#164e63', barStroke: 'rgba(6, 182, 212, 0.38)' },
+            { name: 'orange',  cellBg: '#fdba74', border: '#ea580c', text: '#7c2d12', barStroke: 'rgba(249, 115, 22, 0.38)' },
+            { name: 'fuchsia', cellBg: '#f0abfc', border: '#c026d3', text: '#701a75', barStroke: 'rgba(217, 70, 239, 0.38)' },
+            { name: 'lime',    cellBg: '#bef264', border: '#65a30d', text: '#365314', barStroke: 'rgba(132, 204, 22, 0.38)' },
+            { name: 'sky',     cellBg: '#7dd3fc', border: '#0284c7', text: '#0c4a6e', barStroke: 'rgba(14, 165, 233, 0.38)' },
+            { name: 'indigo',  cellBg: '#a5b4fc', border: '#4f46e5', text: '#312e81', barStroke: 'rgba(99, 102, 241, 0.38)' }
+        ];
 
         const wordsToHide = lessonVocab.map(v => v.en.toUpperCase());
         const gridSize = 11;
         let grid = [];
         let wordsFound = 0;
+        let wsPoints = 0;
+        let foundWordsSet = new Set();
+        let lockedWordBars = []; // Stores { r1, c1, r2, c2, palette, word }
         let isDragging = false;
         let startRow = -1, startCol = -1;
         let selectedCells = [];
+        let toastTimeout = null;
         
-        // New Variables for Timer and State
+        // Timer and State
         let wsTimer = null;
         let wsTimeLeft = 60;
         let wsPlayerName = "";
         let isGameRunning = false;
+
+        function updateScoreUI() {
+            const countEl = document.getElementById('words-found-count');
+            if (countEl) countEl.innerText = wordsFound;
+
+            const scoreDisplay = document.getElementById('ws-score-display');
+            if (scoreDisplay) {
+                scoreDisplay.innerHTML = `<i class="fa-solid fa-star text-amber-500"></i> คะแนน: ${wordsFound} / ${wordsToHide.length} (${wsPoints} แต้ม)`;
+                scoreDisplay.classList.add('scale-110');
+                setTimeout(() => scoreDisplay.classList.remove('scale-110'), 200);
+            }
+        }
+
+        function showWsToast(msg, bgColor, textColor) {
+            const toastEl = document.getElementById('ws-toast');
+            if (!toastEl) return;
+            clearTimeout(toastTimeout);
+            toastEl.innerHTML = `<span class="px-4 py-1 rounded-full shadow-sm inline-block" style="background-color:${bgColor}; color:${textColor};">${msg}</span>`;
+            toastEl.classList.remove('opacity-0');
+            toastEl.classList.add('opacity-100');
+            toastTimeout = setTimeout(() => {
+                toastEl.classList.remove('opacity-100');
+                toastEl.classList.add('opacity-0');
+            }, 2200);
+        }
 
         function showWsStartScreen() {
             document.getElementById('ws-intro').classList.remove('hidden');
@@ -374,7 +445,7 @@
             document.getElementById('ws-intro').classList.add('hidden');
             document.getElementById('game-container').classList.remove('hidden');
             document.getElementById('game-over-screen').classList.add('hidden');
-            document.getElementById('ws-player-display').innerText = `ผู้เล่น: ${wsPlayerName}`;
+            document.getElementById('ws-player-display').innerHTML = `<i class="fa-solid fa-user-astronaut text-blue-600"></i> ผู้เล่น: ${wsPlayerName}`;
             
             wsTimeLeft = 60;
             document.getElementById('ws-timer-display').innerHTML = `<i class="fa-solid fa-clock"></i> ${wsTimeLeft}s`;
@@ -406,15 +477,17 @@
             document.getElementById('game-over-screen').classList.remove('hidden');
             document.getElementById('go-name').innerText = wsPlayerName;
             document.getElementById('go-score').innerText = wordsFound;
+            const goPointsEl = document.getElementById('go-points');
+            if (goPointsEl) goPointsEl.innerText = wsPoints;
             
             const goIcon = document.getElementById('go-icon');
             const goTitle = document.getElementById('go-title');
             const goScreen = document.getElementById('game-over-screen');
             
             if (isPerfect) {
-                goIcon.innerHTML = '<i class="fa-solid fa-circle-check text-green-500"></i>';
+                goIcon.innerHTML = '<i class="fa-solid fa-trophy text-amber-500"></i>';
                 goTitle.className = 'text-green-600 text-3xl font-bold mb-2';
-                goTitle.innerText = 'ยอดเยี่ยมมาก!';
+                goTitle.innerText = 'ยอดเยี่ยมมาก! หาครบทุกคำ!';
                 goScreen.className = 'absolute inset-0 bg-white bg-opacity-95 flex flex-col justify-center items-center rounded-lg z-30 p-4 text-center border-4 border-green-400';
             } else {
                 goIcon.innerHTML = '<i class="fa-solid fa-clock text-red-500"></i>';
@@ -426,10 +499,34 @@
 
         function initWordSearch() {
             wordsFound = 0;
-            document.getElementById('words-found-count').innerText = wordsFound;
+            wsPoints = 0;
+            foundWordsSet.clear();
+            lockedWordBars = [];
+            selectedCells = [];
+            updateScoreUI();
             
-            grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''));
-            wordsToHide.forEach(word => placeWord(word));
+            const toastEl = document.getElementById('ws-toast');
+            if (toastEl) {
+                toastEl.innerHTML = '';
+                toastEl.classList.add('opacity-0');
+            }
+
+            // Place longer words first and guarantee all 10 words are placed
+            const sortedWords = [...wordsToHide].sort((a, b) => b.length - a.length);
+            let allPlaced = false;
+            let boardRetries = 0;
+
+            while (!allPlaced && boardRetries < 30) {
+                boardRetries++;
+                grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''));
+                allPlaced = true;
+                for (const word of sortedWords) {
+                    if (!placeWord(word)) {
+                        allPlaced = false;
+                        break;
+                    }
+                }
+            }
             
             const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             for(let r = 0; r < gridSize; r++) {
@@ -442,13 +539,14 @@
             
             renderGrid();
             renderWordList();
+            renderSvgBars();
         }
 
         function placeWord(word) {
             const dirs = [[0,1], [1,0], [1,1], [-1,1]]; // E, S, SE, NE
             let placed = false;
             let attempts = 0;
-            while(!placed && attempts < 200) {
+            while(!placed && attempts < 400) {
                 attempts++;
                 let dir = dirs[Math.floor(Math.random() * dirs.length)];
                 let r = Math.floor(Math.random() * gridSize);
@@ -474,6 +572,7 @@
                     placed = true;
                 }
             }
+            return placed;
         }
 
         function renderGrid() {
@@ -496,11 +595,57 @@
         function renderWordList() {
             const listEl = document.getElementById('ws-word-list');
             listEl.innerHTML = '';
-            lessonVocab.forEach(v => {
-                listEl.innerHTML += `<div id="word-${v.en.toUpperCase()}" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold shadow-sm transition-all duration-300 flex items-center gap-1 cursor-pointer select-none" onclick="speakText('${v.en}')">
-                    ${v.en} <span class="text-xs text-gray-500 font-normal">(${v.th})</span>
+            lessonVocab.forEach((v, idx) => {
+                const wordUpper = v.en.toUpperCase();
+                listEl.innerHTML += `<div id="word-${wordUpper}" data-color-idx="${idx % wordColorPalette.length}" class="bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1 rounded-full text-sm font-bold shadow-sm transition-all duration-300 flex items-center gap-1 cursor-pointer select-none" onclick="speakText('${v.en}')">
+                    <span class="word-check hidden"><i class="fa-solid fa-circle-check"></i></span>
+                    <span>${v.en}</span> <span class="text-xs opacity-75 font-normal">(${v.th})</span>
                 </div>`;
             });
+        }
+
+        function getCellCenter(r, c) {
+            const gridEl = document.getElementById('ws-grid');
+            const cellEl = document.querySelector(`.ws-cell[data-r="${r}"][data-c="${c}"]`);
+            if (!gridEl || !cellEl) return null;
+            const gridRect = gridEl.getBoundingClientRect();
+            const cellRect = cellEl.getBoundingClientRect();
+            if (gridRect.width === 0) return null;
+            return {
+                x: (cellRect.left - gridRect.left) + cellRect.width / 2,
+                y: (cellRect.top - gridRect.top) + cellRect.height / 2,
+                size: cellRect.width
+            };
+        }
+
+        function renderSvgBars() {
+            const svgEl = document.getElementById('ws-lines-svg');
+            if (!svgEl) return;
+            let svgHtml = '';
+
+            // 1. Render all locked word bars with their unique colors
+            lockedWordBars.forEach(bar => {
+                const p1 = getCellCenter(bar.r1, bar.c1);
+                const p2 = getCellCenter(bar.r2, bar.c2);
+                if (p1 && p2) {
+                    const strokeW = Math.max(18, p1.size * 0.78);
+                    svgHtml += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${bar.palette.barStroke}" stroke-width="${strokeW}" stroke-linecap="round" />`;
+                }
+            });
+
+            // 2. Render active drag bar preview
+            if (isDragging && selectedCells.length > 0) {
+                const first = selectedCells[0];
+                const last = selectedCells[selectedCells.length - 1];
+                const p1 = getCellCenter(first.r, first.c);
+                const p2 = getCellCenter(last.r, last.c);
+                if (p1 && p2) {
+                    const strokeW = Math.max(18, p1.size * 0.78);
+                    svgHtml += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="rgba(59, 130, 246, 0.35)" stroke-width="${strokeW}" stroke-linecap="round" />`;
+                }
+            }
+
+            svgEl.innerHTML = svgHtml;
         }
 
         function getCellFromEvent(e) {
@@ -508,13 +653,28 @@
             if (e.touches && e.touches.length > 0) {
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
             } else {
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
+
             const el = document.elementFromPoint(clientX, clientY);
             if (el && el.classList.contains('ws-cell')) {
-                return { r: parseInt(el.dataset.r), c: parseInt(el.dataset.c) };
+                return { r: parseInt(el.dataset.r, 10), c: parseInt(el.dataset.c, 10) };
+            }
+
+            // Fallback: calculate cell from grid bounding box so gaps/borders never miss
+            const gridEl = document.getElementById('ws-grid');
+            if (gridEl) {
+                const rect = gridEl.getBoundingClientRect();
+                if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+                    const c = Math.max(0, Math.min(gridSize - 1, Math.floor(((clientX - rect.left) / rect.width) * gridSize)));
+                    const r = Math.max(0, Math.min(gridSize - 1, Math.floor(((clientY - rect.top) / rect.height) * gridSize)));
+                    return { r, c };
+                }
             }
             return null;
         }
@@ -522,10 +682,10 @@
         function wsHandleStart(e) {
             if(!isGameRunning) return;
             if(e.target.closest('#ws-word-list') || e.target.closest('#sound-btn') || e.target.closest('button')) return;
-            if(e.cancelable) e.preventDefault(); 
-            initAudio();
             const cell = getCellFromEvent(e);
             if (cell) {
+                if(e.cancelable) e.preventDefault(); 
+                initAudio();
                 isDragging = true;
                 startRow = cell.r;
                 startCol = cell.c;
@@ -550,31 +710,78 @@
             let wordBackward = selectedCells.map(c => c.char).reverse().join('');
             
             let foundWord = wordsToHide.find(w => w === wordForward || w === wordBackward);
-            let wordEl = foundWord ? document.getElementById(`word-${foundWord}`) : null;
             
-            if (foundWord && wordEl && !wordEl.classList.contains('line-through')) {
-                playSfx('good');
-                speakText(foundWord.toLowerCase());
-                
+            if (foundWord && !foundWordsSet.has(foundWord)) {
+                foundWordsSet.add(foundWord);
+                const wordIdx = wordsToHide.indexOf(foundWord);
+                const palette = wordColorPalette[wordIdx % wordColorPalette.length];
+                const vocabObj = lessonVocab[wordIdx] || { en: foundWord.toLowerCase(), th: '' };
+
+                // 1. Lock color on every cell of the found word
                 selectedCells.forEach(c => {
                     c.el.classList.remove('selected');
                     c.el.classList.add('found');
+                    c.el.style.backgroundColor = palette.cellBg;
+                    c.el.style.color = palette.text;
+                    c.el.style.boxShadow = `inset 0 0 0 2px ${palette.border}`;
+                    c.el.dataset.lockedBg = palette.cellBg;
+                    c.el.dataset.lockedColor = palette.text;
+                    c.el.dataset.lockedShadow = `inset 0 0 0 2px ${palette.border}`;
                 });
-                
-                wordEl.classList.remove('bg-blue-100', 'text-blue-800');
-                wordEl.classList.add('bg-gray-300', 'text-gray-500', 'line-through', 'opacity-50');
-                
+
+                // 2. Lock continuous SVG highlight bar for this word
+                if (selectedCells.length > 0) {
+                    const first = selectedCells[0];
+                    const last = selectedCells[selectedCells.length - 1];
+                    lockedWordBars.push({
+                        r1: first.r, c1: first.c,
+                        r2: last.r, c2: last.c,
+                        palette: palette,
+                        word: foundWord
+                    });
+                }
+
+                // 3. Style word list badge with matching color
+                const wordEl = document.getElementById(`word-${foundWord}`);
+                if (wordEl) {
+                    wordEl.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-200');
+                    wordEl.classList.add('line-through', 'scale-105');
+                    wordEl.style.backgroundColor = palette.cellBg;
+                    wordEl.style.borderColor = palette.border;
+                    wordEl.style.color = palette.text;
+                    const checkIcon = wordEl.querySelector('.word-check');
+                    if (checkIcon) checkIcon.classList.remove('hidden');
+                }
+
+                // 4. Update score & UI immediately
                 wordsFound++;
-                document.getElementById('words-found-count').innerText = wordsFound;
+                wsPoints += 10;
+                updateScoreUI();
+                showWsToast(`✨ พบคำว่า "${vocabObj.en.toUpperCase()}" (${vocabObj.th}) +10 แต้ม!`, palette.cellBg, palette.text);
+
+                // 5. Sound & Speech (non-blocking)
+                playSfx('good');
+                speakText(foundWord.toLowerCase());
                 
                 if (wordsFound === wordsToHide.length) {
+                    wsPoints += wsTimeLeft; // Time bonus
+                    updateScoreUI();
                     playSfx('bonus');
-                    setTimeout(() => endWordSearch(true), 500);
+                    setTimeout(() => endWordSearch(true), 650);
                 }
             } else {
-                selectedCells.forEach(c => c.el.classList.remove('selected'));
+                // Restore cells if not a new valid word
+                selectedCells.forEach(c => {
+                    c.el.classList.remove('selected');
+                    if (c.el.dataset.lockedBg) {
+                        c.el.style.backgroundColor = c.el.dataset.lockedBg;
+                        c.el.style.color = c.el.dataset.lockedColor;
+                        c.el.style.boxShadow = c.el.dataset.lockedShadow;
+                    }
+                });
             }
             selectedCells = [];
+            renderSvgBars();
         }
 
         function selectCells(endR, endCol) {
@@ -584,33 +791,40 @@
             let dr = endR - startRow;
             let dc = endCol - startCol;
             
-            let steps = Math.max(Math.abs(dr), Math.abs(dc));
-            if (steps === 0) {
+            if (dr === 0 && dc === 0) {
                 pushSelect(startRow, startCol);
+                renderSvgBars();
                 return;
             }
             
-            let rStep = dr === 0 ? 0 : dr / Math.abs(dr);
-            let cStep = dc === 0 ? 0 : dc / Math.abs(dc);
+            // Snap to nearest 45-degree angle (8 directions)
+            const angle = Math.atan2(dr, dc);
+            const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+            const rStep = Math.round(Math.sin(snapAngle));
+            const cStep = Math.round(Math.cos(snapAngle));
             
-            // Snap to straight lines or diagonals
-            if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) {
-                if (Math.abs(dr) > Math.abs(dc)) { cStep = 0; steps = Math.abs(dr); }
-                else { rStep = 0; steps = Math.abs(dc); }
+            let steps;
+            if (rStep === 0) {
+                steps = Math.abs(dc);
+            } else if (cStep === 0) {
+                steps = Math.abs(dr);
+            } else {
+                steps = Math.max(Math.abs(dr), Math.abs(dc));
             }
             
             for (let i = 0; i <= steps; i++) {
-                pushSelect(startRow + i*rStep, startCol + i*cStep);
+                const nr = startRow + i * rStep;
+                const nc = startCol + i * cStep;
+                if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
+                    pushSelect(nr, nc);
+                }
             }
+            renderSvgBars();
         }
 
         function pushSelect(r, c) {
             const el = document.querySelector(`.ws-cell[data-r="${r}"][data-c="${c}"]`);
-            if (el && !el.classList.contains('found')) { // Avoid overriding found styling fully during selection
-                el.classList.add('selected');
-                selectedCells.push({r, c, el, char: grid[r][c]});
-            } else if (el && el.classList.contains('found')) {
-                // Still add to logic to allow crossing words
+            if (el) {
                 el.classList.add('selected');
                 selectedCells.push({r, c, el, char: grid[r][c]});
             }
@@ -628,6 +842,7 @@
             wsArea.addEventListener('touchstart', wsHandleStart, {passive: false});
             document.addEventListener('touchmove', wsHandleMove, {passive: false});
             document.addEventListener('touchend', wsHandleEnd);
+            window.addEventListener('resize', renderSvgBars);
         }, 100);
 
         /* ================= EXERCISE SYSTEM ================= */
